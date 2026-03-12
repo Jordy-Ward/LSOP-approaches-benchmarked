@@ -132,3 +132,43 @@ class Rastrigin(Problem[List[float], float]):
         limit = max(abs(lb), abs(ub))
         worst = self.dimension * (limit ** 2 + 10.0)
         return (best, worst)
+    
+    
+class Schwefel12(Problem[List[float], float]):
+    """Schwefel12 double sum function
+
+    Global minimum: f(0,...,0) = 0.
+    
+    Unimodal, non seperable function. Variables depend on each other through cummulative sum
+    """
+
+    def __init__(self, dimension: int = 100, domain: Tuple[float, float] = (-100.0, 100.0)):
+        lower_bounds = [domain[0]] * dimension
+        upper_bounds = [domain[1]] * dimension
+        super().__init__(
+            dimension=dimension,
+            bounds=(lower_bounds, upper_bounds),
+            name="Schwefel12"
+        )
+
+    def evaluate(self, solution: List[float]) -> Evaluation[float]:
+        fitness = 0.0
+        running_sum = 0.0
+        for x in solution:
+            running_sum += x
+            fitness += running_sum ** 2
+        return Evaluation(fitness=fitness)
+
+    def is_dynamic(self) -> Tuple[bool, bool]:
+        return (False, False)
+
+    def is_multi_objective(self) -> bool:
+        return False
+
+    def get_fitness_bounds(self) -> Tuple[float, float]:
+        best = 0.0
+        lb = self.bounds[0][0]
+        ub = self.bounds[1][0]
+        limit = max(abs(lb), abs(ub))
+        worst = self.dimension * (self.dimension * limit) ** 2
+        return (best, worst)
