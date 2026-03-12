@@ -1,0 +1,14 @@
+**/__pycache__
+**/.mypy_cache
+**/.pytest_cache
+**/*.jpeg
+**/*.out.*
+**/*.tmp.*
+tmp.*
+clean_pc.sh
+
+cilpy.egg-info
+site/
+build/
+dist/
+.DS_Store
