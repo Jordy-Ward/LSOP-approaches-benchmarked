@@ -1,0 +1,73 @@
+site_name: cilpy Documentation
+
+plugins:
+  - mkdocstrings
+  - search
+
+
+nav:
+  - 'Home': 'index.md'             # overview of cilpy and documentation
+  - 'Quickstart': 'quickstart.md'  # quick guide on how to implement interfaces and run experiment.
+  - 'API Reference':
+    - 'Overview': 'api/index.md'   # core interfaces of the library (problem, solver, and compare)
+    - 'Problem': 'api/problem.md'
+    - 'Solver': 'api/solver.md'
+    - 'Constraint Handler': 'api/constraint_handler.md'
+    - 'Compare': 'api/compare.md'
+    - 'Runner': 'api/runner.md'
+  - 'Included':
+    - 'Overview': 'lib/index.md'   # high level description of library components, and how they interact.
+    - 'Problems': 'lib/problem.md' # documentation on problems included in the library.
+    - 'Solvers': 'lib/solver.md'   # documentation on solvers included in the library.
+    - 'Compare': 'lib/compare.md'  # documentation on comparison included tools in the library.
+  - 'Developers':
+    - 'Intro': 'dev/index.md'      # developer guide and contribution rules
+    - 'Testing': 'dev/testing.md'  # Testing overview
+    - 'Todo': 'dev/todo.md'        # Tasks developers should work on next
+
+theme:
+  name: material
+  logo: logo_cilpy_light.svg
+  favicon: favicon.svg
+  features:
+  - announce.dismiss
+  - content.action.edit
+  - content.action.view
+  - content.code.annotate
+  - content.code.copy
+  - content.tooltips
+  - navigation.footer
+  - navigation.indexes
+  - navigation.sections
+  - navigation.expand
+  - navigation.top
+  - navigation.path
+  - search.highlight
+  - search.suggest
+  - toc.follow
+  - toc.integrate
+  palette:
+    scheme: slate
+    primary: black
+    accent: lime
+  palette:
+    - media: "(prefers-color-scheme)"
+      accent: lime
+      primary: black
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      accent: lime
+      primary: black
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      accent: lime
+      primary: black
+      toggle:
+        icon: material/brightness-4
+        name: Switch to system preference

@@ -1,0 +1,38 @@
+# pyproject.toml
+# followed this: https://packaging.python.org/en/latest/guides/writing-pyproject-toml/
+# Run 
+# ```bash
+# $ python3 -m pip install -e .
+# ```
+# to install this package on your machine
+
+[build-system]
+requires = ["setuptools >= 77.0.3"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cilpy"
+version = "0.0.2"
+authors = [
+  { name="Willie Loftie-Eaton", email="willieloea@gmail.com" }
+]
+description = "A computational intelligence library for Python."
+readme = "README.md"
+requires-python = ">=3.8"
+license = "MIT"
+license-files = ["LICENSE*"]
+
+dependencies = [
+    "matplotlib>=3.10.7",
+    "numpy>=2.3.4",
+    "pandas>=2.3.3",
+    "pytest>=8.4.2"
+]
+
+[project.urls]
+Homepage = "https://github.com/willieloea/cilpy"
+Issues = "https://github.com/willieloea/cilpy/issues"
+Repository = "https://github.com/willieloea/cilpy"
+
+[tool.setuptools]
+packages = ["cilpy"]
