@@ -11,3 +11,4 @@ cilpy.egg-info
 site/
 build/
 dist/
+.DS_Store
