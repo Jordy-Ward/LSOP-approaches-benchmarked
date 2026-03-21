@@ -1,0 +1,385 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{listings} % Added FOR Haskell FORmatting
+\usepackage{float}
+\usepackage{algorithm}
+\usepackage{booktabs}
+\usepackage{multirow}
+
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+\begin{document}
+
+\title{Particle Swarm Optimisation for Large-Scale Optimisation}
+
+\author{\IEEEauthorblockN{Jordan Michael Ward}
+\IEEEauthorblockA{\textit{Computer Science Department} \\
+\textit{Stellenbosch University}\\
+Stellenbosch, South Africa \\
+% Email: <insert email here>
+}
+}
+
+\maketitle
+\thispagestyle{plain}
+\pagestyle{plain}
+
+\begin{abstract}
+    Large scale optimisation problems (LSOPs) present a fundamental challenge for traditional optimisation algorithms due to 
+    the curse of dimensionality, a phenomenon exponentially expanding the search space and leading to 
+    velocity explosion and premature stagnation. In this report a hybrid particle swarm optimisation (HPSO), 
+    integrating both Subspace Initialisation and Stochastic Scaling (two techniques used to better scale LSOPs) is introduced and measured under the hypothesis that the algorithm 
+    will outperform standard algorithms on complex multi-dimensional landscapes. By combining both Stochastic Scaling and 
+    Subspace Initialisation, it is theorized an increase in performance will be attained when comparing the results of the algorithm 
+    to implementations on LSOPs using both approaches separably. Experimental evaluation was performed with dimensionalities 
+    100, 500 and 1000 per configuration. Every algorithm ran for 30 independent runs at 5000 iterations per run.
+\end{abstract}
+
+\section{Introduction}
+    Large Scale Optimisation remains a difficult area in optimisation due to the "Curse of Dimensionality". When the 
+    dimension for a problem increases, the search landscape grows exponentially. To help mitigate this scalability issue, approaches such as 
+    Subspace Initialisation and Stochastic Scaling have been developed to better navigate high-dimensional problems. The 
+    goal of this report is to explore an advanced hybrid particle swarm optimisation (HPSO) model that merges Subspace 
+    Initialisation and Stochastic Scaling, and to measure the performance of the model against the algorithms the hybrid model is built from. 
+
+    Four PSO variants were implemented: Canonical, Subspace Initialisation, Stochastic Scaling, and Hybrid. Each 
+    algorithm was rigorously benchmarked against five classic mathematical landscapes: Sphere, Elliptic, Rosenbrock, 
+    Rastrigin, and Schwefel 1.2. For every benchmark function, 30 independent runs of 5000 iterations were performed 
+    at dimensions 100, 500, and 1000 to ensure statistical significance. 
+
+    The empirical results demonstrate that the proposed Hybrid PSO significantly outperforms both the Canonical 
+    baseline and the independent constituent algorithms of the baseline on the majority of the tested landscapes. By effectively 
+    mitigating high-dimensional velocity explosions while maintaining search discipline, the HPSO achieves 
+    stable convergence. However, a stagnation observed on the Rosenbrock function 
+    highlights an algorithmic trade-off, revealing that the very mechanisms used to address steep landscapes 
+    can become detrimental on flat-valley terrains.
+
+    The remainder of this report is structured as follows. Section 2 introduces the background theory and foundational 
+    concepts of PSO. Section 3 details the methodology and mathematical formulations of the advanced variants. Section 
+    4 outlines the empirical procedure and benchmark configurations. Section 5 presents the analysis of the 
+    results. Finally, Section 6 provides concluding remarks.
+
+\section{Background}
+    Global optimisation focuses on finding the best solution, the global maximum or minimum, for a given objective function over a 
+    continuous search space. Unlike local search algorithms, where the search stops in the nearest valley or peak, global optimisation 
+    aims to navigate complex landscapes to find the single best solution among many potential local optima. A large scale optimisation problem 
+    (LSOP) is a global optimisation problem with a high dimensionality, typically in the hundreds or thousands. This phenomenon is the infamous 
+    "Curse of Dimensionality" in LSOPs. When the dimension in optimisation parameters increase, the search space grows exponentially,  
+    making it impossible to scour the entire space for the global optimum. The exponential growth makes exhaustive searches infeasible, and causes distance 
+    metrics to be drastically skewed. 
+    
+    Because deterministic or exhaustive approaches fail under these extreme conditions, researchers rely on 
+    meta-heuristics, like population based evolutionary algorithms, to find "good enough" solutions in a reasonable timeframe. A 
+    prominent approach is particle swarm optimisation (PSO), originally introduced by Kennedy and Eberhart [CITATION]. Inspired by the social 
+    foraging behaviour of bird flocks, PSO maintains a population, or "swarm", of candidate solutions called particles.
+    As these particles move through the multi-dimensional search space, the trajectories of the particles are guided by three main forces: the current momentum of the particles, 
+    the historical personal best position, and the global best position found by the entire swarm. 
+
+    The algorithm updates the velocity and position of each particle $i$ at iteration $t$ as
+    
+    \begin{equation}
+        V_{i}^{t+1} = w V_{i}^t + c_1 r_1 (Pbest_{i}^t - X_{i}^t) + c_2 r_2 (Gbest^t - X_{i}^t)
+        \label{eq:pso_velocity}
+    \end{equation}
+    and
+    \begin{equation}
+        X_{i}^{t+1} = X_{i}^t + V_{i}^{t+1}
+        \label{eq:pso_position}
+    \end{equation}
+    respectively. In equation \ref{eq:pso_velocity}, $w$ represents the inertia weight of the particle [CITATION]; the inertia weight controls the momentum of the particle. 
+    The cognitive and social acceleration coefficients are represented by $c_1$ and $c_2$; the coefficients control how strongly the particle is pulled 
+    back to its own personal historic best ($Pbest$), or the global best of the swarm ($Gbest$).
+    Finally, $r_1$ and $r_2$ are stochastic vectors sampled uniformly from $[0, 1]^D$, introducing the stochastic scaling used to 
+    encourage diversity and explore the search space. 
+
+    The general framework of the canonical PSO is outlined in Algorithm \ref{alg:canonical_pso}.
+
+    \begin{algorithm}[H]
+    \caption{Canonical Particle Swarm Optimisation}
+    \label{alg:canonical_pso}
+    \begin{algorithmic}[1] % [1] adds line numbers
+    \STATE \textbf{Initialise} swarm with $N$ particles
+    \FOR{each particle $i \in 1..N$}
+        \STATE Randomly initialise position $X_i$ within search bounds
+        \STATE Initialise velocity $V_i$ to randomly scaled small magnitudes
+        \STATE Evaluate objective fitness $f(X_i)$
+        \STATE Set personal best $Pbest_i = X_i$
+    \ENDFOR
+    \STATE Determine global best $Gbest$ from all $Pbest_i$
+    \WHILE{termination condition not met}
+        \FOR{each particle $i \in 1..N$}
+            \STATE Update velocity $V_i$ using Equation \ref{eq:pso_velocity}
+            \STATE Update position $X_i$ using Equation \ref{eq:pso_position}
+            \STATE enforce boundary constraints on $X_i$
+            \STATE Evaluate new objective fitness $f(X_i)$
+            \IF{$f(X_i)$ is better than $f(Pbest_i)$}
+                \STATE Update $Pbest_i = X_i$
+            \ENDIF
+        \ENDFOR
+        \STATE Update $Gbest$ if any new $Pbest_i$ is better than current $Gbest$
+    \ENDWHILE
+    \RETURN $Gbest$
+    \end{algorithmic}
+    \end{algorithm}
+
+    While canonical PSO performs well on low-dimensional spaces, its velocity updates and uniform random initialisation often lead to premature 
+    convergence or stagnation when subjected to the sheer volume of Large Scale Optimisation Problems [CITATION]. To address this challenge, modern 
+    literature proposes modifying the standard initialisation and velocity mechanisms. 
+\section{Methodology}
+    This section details the algorithm architectures to test against the chosen 
+    Large Scale Optimisation Problems. The algorithms were implemented in Python, using the cilpy 
+    library. 
+
+\subsection{Standard Particle Swarm Optimisation}
+    The Canonical PSO algorithm acts as the baseline in this experiment. It follows the standardised formulation 
+    and uniform random initialisation pattern defined in Algorithm \ref{alg:canonical_pso}, ensuring a standard benchmark 
+    providing a baseline to measure more advanced scaling methods.
+
+\subsection{Stochastic Scaling Particle Swarm Optimisation}
+    In the Canonical PSO, unique random vectors $r_1$ and $r_2$ are applied to every single dimension to encourage diversity 
+    and inject random noise. In high-dimensional problems, however, this independent scaling model actually causes the 
+    swarm to behave erratically, with a high degree of roaming. To mitigate this, the dimensions for the swarm are randomly partitioned into $k$ 
+    sub groups, a technique known as Stochastic Scaling. 
+
+    During every iteration, all dimensions are 
+    randomly shuffled into $k$ equal-sized groups, where a single $r_1$ and $r_2$ value is then drawn and multiplied 
+    with every dimension within its respective group. The value of $k$ is not static; it starts at one for iteration zero and increases linearly 
+    up to the maximum dimensionality $D$.  
+
+\subsection{Subspace Initialisation Particle Swarm Optimisation}
+    Particles are uniformly initialised over the entire search space in the Canonical PSO, in an attempt to acquire a broad understanding of the entire
+    landscape. Unfortunately, in high-dimensional spaces, this initialisation model leads to chaotic velocity explosion, causing particles to overshoot desirable regions and bounce 
+    off boundary walls. Subspace Initialisation attempts to counter this effect by modifying how the swarm particles are initially distributed, severely 
+    constricting the swarms starting positions to a heavily constrained area. The algorithm calculates the geometric center of the search space, and 
+    calculates a one-dimensional line that passes directly through the origin. The swarm is then placed all along this line with the initial velocities of the particles 
+    set to zero. By initialising the swarm in this manner the algorithm promotes fine-grained exploitation and mitigates 
+    velocity explosion, before the particles begin to fan out and explore wider spaces. 
+
+\subsection{Hybrid Particle Swarm Optimisation}
+    The Hybrid PSO, as seen in Algorithm \ref{alg:hybrid_pso}, combines both aforementioned scaling techniques for LSOPs into a single algorithmic structure. The goal of the hybrid model is to harness the 
+    benefits of the structured starting positions of Subspace Initialisation, which mitigates velocity explosion at the start, with the dynamic and randomised 
+    sub-group velocity updates of Stochastic Scaling. This combination controls particle roaming as well as massive step sizes throughout the experiment. 
+    
+    The swarm is initially seeded entirely using the Subspace approach, providing a structural exploration footing. Then, during the iterative 
+    loops, the velocity equations are driven entirely by the linearly scaling $k$-group dimensionality of the Stochastic model. It was hypothesised that 
+    the hybrid structure will outperform both independent algorithms tested individually. 
+
+    \begin{algorithm}
+    \caption{Hybrid Particle Swarm Optimisation (Subspace Initialisation + Stochastic Scaling)}
+    \label{alg:hybrid_pso}
+    \begin{algorithmic}[1]
+    \STATE \textbf{Phase 1: Subspace Initialisation}
+    \STATE Calculate the geometric center $C$ of the search space bounds
+    \STATE Generate an orthonormal seed vector $d$ via Modified Gram-Schmidt
+    \FOR{each particle $i \in \{1, \dots, N\}$}
+        \STATE Generate position $p_1$ along the line $p = t \cdot d + C$ (with margin)
+        \STATE Generate position $p_2$ along the line $p = t \cdot d + C$ (strict bounds)
+        \IF{$f(p_2) < f(p_1)$}
+            \STATE Personal best $y_i \gets p_2$, Initial position $x_i \gets p_1$
+        \ELSE
+            \STATE Personal best $y_i \gets p_1$, Initial position $x_i \gets p_2$
+        \ENDIF
+        \STATE Initial velocity $v_i \gets \mathbf{0}$ \COMMENT{Eliminate initial momentum}
+    \ENDFOR
+    \STATE Initialise global best $\hat{y}$
+    \STATE
+    \STATE \textbf{Phase 2: Stochastic Scaling Loop}
+    \FOR{iteration $t = 1$ to $T_{max}$}
+        \STATE Calculate group count $k$ (linearly increasing from $1$ to $D$)
+        \STATE Randomly partition the $D$ dimensions into $k$ groups
+        \FOR{each group $g \in \{1, \dots, k\}$}
+            \STATE Draw shared group scalars $r_{1g} \sim U(0,1)$ and $r_{2g} \sim U(0,1)$
+        \ENDFOR
+        \FOR{each particle $i \in \{1, \dots, N\}$}
+            \FOR{each dimension $d \in \{1, \dots, D\}$}
+                \STATE Let $g$ be the specific group containing dimension $d$
+                \STATE $v_{id} \gets w v_{id} + c_1 r_{1g} (y_{id} - x_{id}) + c_2 r_{2g} (\hat{y}_d - x_{id})$
+                \STATE $x_{id} \gets x_{id} + v_{id}$
+                \STATE Clamp $x_{id}$ to search space bounds
+            \ENDFOR
+            \STATE Evaluate $f(x_i)$ and update personal best $y_i$
+        \ENDFOR
+        \STATE Update global best $\hat{y}$ if necessary
+    \ENDFOR
+    \end{algorithmic}
+    \end{algorithm}
+
+\section{Empirical Procedure}
+    To evaluate the algorithms, the experimental setup was designed to stress test the Particle Swarm Optimisation 
+    variants against increasingly large search spaces to capture how algorithmic performance degenerates or improves with dimensionality. 
+
+\subsection{Benchmark Functions}
+    The capability of the algorithm variants was tested against five classic benchmarking optimisation functions, consisting of both 
+    unimodal and multi-modal landscapes. The functions were evaluated across dimensions ($D$) $100$, $500$, and $1000$, and the specific character domains 
+    were as follows:
+    
+    \begin{itemize}
+        \item \textbf{Sphere}: A smooth, unimodal, strongly convex landscape. Search domain: $[-100.0, 100.0]^D$.
+        \item \textbf{Elliptic}: A highly ill-conditioned function, representing stretched topologies. Search domain: $[-100.0, 100.0]^D$.
+        \item \textbf{Rastrigin}: A highly multi-modal function containing numerous periodic local minima. Search domain: $[-5.12, 5.12]^D$.
+        \item \textbf{Rosenbrock}: A non-convex, narrow "valley" topology testing local minima avoidance. Search domain: $[-30.0, 30.0]^D$.
+        \item \textbf{Schwefel 1.2}: A deeply non-separable unimodal function. Search domain: $[-100.0, 100.0]^D$.
+    \end{itemize}
+
+\subsection{Experimental Parameters}
+    Fairness across all algorithms was strictly maintained. Every algorithm executed for exactly $30$ independent runs to ensure robust 
+    averages. Each single run was strictly terminated after $5000$ iterations. 
+    The swarm size was tightly constrained to $30$ particles, the inertia weight ($w$) was set to $0.729844$, and both the 
+    cognitive ($c_1$) and social ($c_2$) acceleration coefficients were defined equally as $1.49618$.
+    Because standard baseline parameters across every algorithm were used, any performance discrepancies measured are attributed to the 
+    underlying algorithm architecture.
+
+\subsection{Evaluation Metrics}
+    To determine the efficiency and accuracy of the underlying architectures, final fitness values across all benchmarking functions were logged 
+    for all $30$ independent runs. The \textbf{Mean Error} and \textbf{Standard Deviation} are reported under tabular conditions in Table \ref{tab:results}.
+    
+    Additionally, logarithmic convergence profiles plotting the generation sequence against the global best fitness evaluations are provided to 
+    visually represent optimisation speed and trajectory stagnation characteristics over time.
+
+\begin{table*}[htbp]
+\centering
+\caption{Mean Best Fitness and Standard Deviation over 30 Independent Runs}
+\label{tab:results}
+\begin{tabular}{llcccc}
+\toprule
+\textbf{Function} & \textbf{$D$} & \textbf{Canonical PSO} & \textbf{Stochastic Scaling} & \textbf{Subspace Init} & \textbf{Hybrid PSO} \\
+\midrule
+\multirow{3}{*}{\textbf{Sphere}} & 100 & 1.43e+04 $\pm$ 8.98e+03 & 3.33e+02 $\pm$ 1.83e+03 & 7.55e-08 $\pm$ 2.93e-07 & \textbf{2.73e-11 $\pm$ 1.44e-10} \\
+ & 500 & 2.82e+05 $\pm$ 3.86e+04 & 2.23e+04 $\pm$ 7.48e+03 & 1.81e+01 $\pm$ 3.19e+01 & \textbf{4.40e-01 $\pm$ 7.48e-01} \\
+ & 1000 & 1.02e+06 $\pm$ 6.98e+04 & 1.56e+05 $\pm$ 3.11e+04 & 5.34e+01 $\pm$ 9.31e+01 & \textbf{4.98e+00 $\pm$ 6.43e+00} \\
+\midrule
+\multirow{3}{*}{\textbf{Elliptic}} & 100 & 8.59e+08 $\pm$ 5.15e+08 & 1.99e+07 $\pm$ 6.11e+07 & 2.54e-04 $\pm$ 9.82e-04 & \textbf{1.38e-09 $\pm$ 4.91e-09} \\
+ & 500 & 1.31e+10 $\pm$ 3.99e+09 & 3.78e+08 $\pm$ 1.89e+08 & 2.89e+05 $\pm$ 8.77e+05 & \textbf{4.94e+03 $\pm$ 8.96e+03} \\
+ & 1000 & 3.29e+10 $\pm$ 6.32e+09 & 2.89e+09 $\pm$ 5.75e+08 & 1.58e+06 $\pm$ 2.37e+06 & \textbf{2.52e+05 $\pm$ 4.14e+05} \\
+\midrule
+\multirow{3}{*}{\textbf{Rosenbrock}} & 100 & 2.40e+07 $\pm$ 4.28e+07 & 2.01e+02 $\pm$ 5.67e+01 & 8.89e+01 $\pm$ 1.93e+00 & \textbf{8.73e+01 $\pm$ 9.90e-01} \\
+ & 500 & 1.23e+09 $\pm$ 2.69e+08 & 7.65e+06 $\pm$ 3.06e+06 & 6.04e+02 $\pm$ 2.87e+02 & \textbf{4.99e+02 $\pm$ 1.16e+01} \\
+ & 1000 & 4.44e+09 $\pm$ 4.63e+08 & 8.52e+07 $\pm$ 3.33e+07 & 1.92e+03 $\pm$ 2.06e+03 & \textbf{1.03e+03 $\pm$ 8.94e+01} \\
+\midrule
+\multirow{3}{*}{\textbf{Rastrigin}} & 100 & 6.21e+02 $\pm$ 8.48e+01 & 1.88e+02 $\pm$ 3.67e+01 & 6.30e-01 $\pm$ 2.42e+00 & \textbf{8.69e-09 $\pm$ 2.45e-08} \\
+ & 500 & 3.96e+03 $\pm$ 1.64e+02 & 1.58e+03 $\pm$ 1.46e+02 & 1.02e+01 $\pm$ 2.36e+01 & \textbf{3.06e-01 $\pm$ 4.75e-01} \\
+ & 1000 & 9.49e+03 $\pm$ 2.30e+02 & 5.10e+03 $\pm$ 2.66e+02 & 2.77e+01 $\pm$ 3.79e+01 & \textbf{6.20e+00 $\pm$ 1.97e+01} \\
+\midrule
+\multirow{3}{*}{\textbf{Schwefel12}} & 100 & 8.93e+04 $\pm$ 4.32e+04 & 1.02e+04 $\pm$ 1.38e+04 & 3.94e+00 $\pm$ 6.35e+00 & \textbf{1.65e-03 $\pm$ 7.03e-03} \\
+ & 500 & 1.77e+06 $\pm$ 3.79e+05 & 7.22e+05 $\pm$ 2.69e+05 & 1.77e+03 $\pm$ 3.86e+03 & \textbf{7.61e+01 $\pm$ 1.70e+02} \\
+ & 1000 & 6.89e+06 $\pm$ 9.79e+05 & 3.07e+06 $\pm$ 9.26e+05 & 7.73e+03 $\pm$ 2.47e+04 & \textbf{2.67e+02 $\pm$ 4.08e+02} \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+
+\section{Research Results}
+This section presents the empirical findings of the study. First, convergence behaviours 
+and structural biases are analysed. Following this, a specific note on the Rosenbrock anomaly is discussed.
+
+\subsection{Convergence Behaviours and Algorithmic Structural Bias}
+The convergence profiles for $D=1000$ across the benchmark functions are presented in Figures \ref{fig:sphere1000} 
+through \ref{fig:rosenbrock1000}. Across the Sphere, Elliptic, Rastrigin, and Schwefel 1.2 landscapes, a consistent 
+performance hierarchy emerges.
+
+The Canonical PSO consistently exhibited the poorest performance. Driven by independent, per-dimension random 
+initialisation, the Canonical swarm suffers from severe velocity explosion in high-dimensional spaces, causing 
+particles to rapidly expand the search radius of the particles and waste evaluations on out-of-bounds roaming. 
+
+The purely Stochastic Scaling PSO successfully dampens this velocity explosion through dimensional 
+coupling, keeping the swarm stable. However, the stochastic scaling algorithm plateaus early in the search process. Because the initial positions of the stochastic scaling swarm 
+are scattered uniformly at random, the coupled velocity updates restrict the reachable space of the swarm, 
+preventing the swarm from navigating to the global optimum from a distant starting point. 
+
+The Subspace Initialisation PSO bypasses the initial velocity explosion by seeding the swarm entirely along a 
+one-dimensional line passing through the center of the bounds. It is important to note the global optima of these standard benchmark 
+functions lie exactly at the origin. Therefore, Subspace 
+Initialisation effectively drops the swarm precisely on the target landscape at Iteration 0, providing a massive, 
+head-start. However, because the algorithm subsequently reverts to standard Canonical PSO velocity updates, 
+the subspace initialisation algorithm eventually succumbs to high-dimensional chaos and struggles to fine-tune the exploitation of the swarm.
+
+The \textbf{Hybrid PSO} heavily dominates these four benchmarks, but the superiority of the hybrid model is not solely due to this 
+initialisation advantage. While the hybrid PSO shares the exact same origin-drop advantage as the Subspace algorithm, the Hybrid 
+immediately transitions into Stochastic Scaling for its iterative velocity updates. This mechanism actively controls 
+particle momentum, preventing the swarm from exploding off the initial subspace line into chaotic jitter. This 
+biased starting position with damped velocity mechanics results in a 
+staircase convergence, allowing the swarm to converge 
+significantly deeper into the local minima than pure Subspace Initialisation.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\linewidth]{../plots/Sphere_D1000.png}
+    \caption{Convergence Profile for Sphere ($D = 1000$)}
+    \label{fig:sphere1000}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\linewidth]{../plots/Elliptic_D1000.png}
+    \caption{Convergence Profile for Elliptic ($D = 1000$)}
+    \label{fig:elliptic1000}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\linewidth]{../plots/Schwefel12_D1000.png}
+    \caption{Convergence Profile for Schwefel 1.2 ($D = 1000$)}
+    \label{fig:schwefel1000}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\linewidth]{../plots/Rastrigin_D1000.png}
+    \caption{Convergence Profile for Rastrigin ($D = 1000$)}
+    \label{fig:rastrigin1000}
+\end{figure}
+
+\subsection*{Note on the Rosenbrock Anomaly}
+
+While the Hybrid PSO dominates symmetrically centered topologies, the algorithm immediately stagnates at roughly $10^3$ on the 
+Rosenbrock benchmark as illustrated in Figure \ref{fig:rosenbrock1000}. This occurs due to how the algorithm interacts with the notoriously flat parabolic valley of the Rosenbrock function. Subspace Initialisation forces the swarm to start at the origin $[0, \dots, 0]$ with 
+zero initial velocity. Trapped on this flat valley floor without initial momentum, and heavily restricted by the 
+dampening of Stochastic Scaling, the particles cannot generate the velocity required to navigate toward the global 
+minimum at $[1, \dots, 1]$. This highlights a critical trade-off: mechanisms to prevent velocity 
+explosions on steep topologies can actively hinder exploration on flat-valley landscapes.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\linewidth]{../plots/Rosenbrock_D1000.png}
+    \caption{Convergence Profile for Rosenbrock ($D = 1000$)}
+    \label{fig:rosenbrock1000}
+\end{figure}
+
+\section{Conclusion}
+The primary objective of this study was to evaluate strategies for mitigating the curse of dimensionality in large scale 
+optimisation problems (LSOPs). A hybrid particle swarm optimisation (HPSO) algorithm was developed, integrating 
+Subspace Initialisation and Stochastic Scaling. The performance of this hybrid was benchmarked against 
+Canonical PSO and the independent constituent algorithms of the hybrid across five landscapes at dimensionalities 
+up to $D=1000$.
+
+The empirical results supported the initial hypothesis for the majority of the tested landscapes. By combining 
+the geometrically constrained, zero velocity starting conditions of Subspace Initialisation with the  
+coupled velocity dampening of Stochastic Scaling, the Hybrid PSO successfully prevented high-dimensional velocity 
+explosion and excessive particle roaming. The Hybrid PSO outperformed the Canonical, 
+purely Stochastic, and purely Subspace swarms on the Sphere, Elliptic, Rastrigin, and Schwefel 1.2 benchmarks, 
+demonstrating stable convergence.
+
+However, this investigation also identified a critical algorithmic limitation through the Rosenbrock anomaly. The 
+complete stagnation of the Hybrid swarm on the Rosenbrock function proved that while eliminating initial momentum is 
+highly beneficial for symmetrically steep functions, this elimination is actively detrimental on flat-valley landscapes 
+where initial momentum is strictly required for traversal. 
+
+Conducting this research highlighted that algorithmic performance in LSOPs cannot be evaluated purely on final 
+fitness metrics. An understanding of how the mechanics of an algorithm interact with the specific spatial landscape of a problem is 
+also important. 
+
+Future work should address the initialisation bias present in this study by benchmarking the Hybrid 
+algorithm against "shifted" landscape variants, where the global optimum is intentionally displaced from the geometric 
+center of the search space. Future studies should investigate adaptive initialisation strategies that can  
+detect flat-valley landscapes in order to inject necessary initial momentum to address stagnation 
+vulnerabilities observed in the Rosenbrock landscape.
+
+\end{document}
